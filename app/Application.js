@@ -50,14 +50,14 @@ Ext.define('OrderFalloutTool.view.main.Main', {
     'Ext.window.MessageBox'
     ], 
     scrollable: true,
-    height: 600,
-    border: 1,
+    height: '80%',
     style: { borderColor: '#000000', borderStyle: 'solid', borderWidth: '1px' },
 
     layout: {
         type: 'vbox',
         align: 'center'
     },
+	margin:'10 0 20 0',
     items: [{
         items: [{
             xtype: 'cognitoforms'
