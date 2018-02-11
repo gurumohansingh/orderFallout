@@ -231,7 +231,13 @@ Ext.define('OrderFalloutTool.view.form.cognitoformsController', {
             if (form.findField('extractionTaskType').getValue() === 'SPL') {
                 formData.query = form.findField('extractionTaskQuery').getValue();
                 formData.validation_expression = form.findField('extractionTaskValidationExpression').getValue();
-                formData.STORE_MSG_FLAG = form.findField('extractionTaskfieldstoreMessage').getValue();
+                if(form.findField('extractionTaskfieldstoreMessage').getValue().rb=="1"){
+                formData.STORE_MSG_FLAG= 1;
+                }
+                else
+                {
+                    formData.STORE_MSG_FLAG= 0;
+                }
             }
             if (form.findField('extractionTaskType').getValue() === 'MANUAL') {
                 formData.query = form.findField('extractionTaskQuery').getValue();
@@ -277,7 +283,6 @@ Ext.define('OrderFalloutTool.view.form.cognitoformsController', {
             transformTask: transformTaskformData,
             requestMessage: requestMessageformsData
         }
-        debugger;
         if (transformTaskformDataError.length === 0 && error === 0) {
             view.setLoading(true);
             Ext.Ajax.request({
