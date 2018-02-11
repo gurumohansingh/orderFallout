@@ -16,7 +16,7 @@ Ext.define('OrderFalloutTool.Application', {
     },
 
     stores: [
-    // TODO: add global / shared stores here
+        // TODO: add global / shared stores here
     ],
 
     launch: function () {
@@ -25,11 +25,11 @@ Ext.define('OrderFalloutTool.Application', {
 
     onAppUpdate: function () {
         Ext.Msg.confirm('Application Update', 'This application has an update, reload?',
-        function (choice) {
-            if (choice === 'yes') {
-                window.location.reload();
+            function (choice) {
+                if (choice === 'yes') {
+                    window.location.reload();
+                }
             }
-        }
         );
     }
 });
@@ -44,20 +44,21 @@ Ext.define('OrderFalloutTool.Application', {
 Ext.define('OrderFalloutTool.view.main.Main', {
     extend: 'Ext.panel.Panel',
     xtype: 'app-main',
-
+    bodyPadding: '10 10 10 10',
     requires: [
-    'Ext.plugin.Viewport',
-    'Ext.window.MessageBox'
-    ], 
+        'Ext.plugin.Viewport',
+        'Ext.window.MessageBox'
+    ],
     scrollable: true,
     height: '80%',
-    style: { borderColor: '#000000', borderStyle: 'solid', borderWidth: '1px' },
-
+    border: 2,
+    // style: { borderColor: '#000000', borderStyle: 'solid', borderWidth: '1px' },
+    bodyPadding: '10 10 10 10',
     layout: {
         type: 'vbox',
         align: 'center'
     },
-	margin:'10 0 20 0',
+    margin: '10 0 20 0',
     items: [{
         items: [{
             xtype: 'cognitoforms'
@@ -201,6 +202,105 @@ Ext.define('OrderFalloutTool.view.form.cognitoformsController', {
         }
         if (totalForm.length <= me.allowTotalCount)
             me.getView().getComponent('addMoreTaskRuleButton').setDisabled(false);
+    },
+    //submit button
+    formSubmit: function () {
+        var me = this;
+        var view = me.getView();
+        var error = 0;
+        var extractionTaskformData = [];
+        var extractionTaskforms = view.query('extractionTaskform');
+        var transformTaskformDataError = [];
+        for (var i = 0; i < extractionTaskforms.length; i++) {
+            var form = extractionTaskforms[i].getForm();
+            var formData = {};
+            formData.name = form.findField('extractionTaskName').getValue();
+            if (formData.name.trim() === '')
+                transformTaskformDataError.push(extractionTaskforms[i])
+            formData.type = form.findField('extractionTaskType').getValue();
+            if (form.findField('extractionTaskType').getValue() === 'API') {
+                formData.operation = form.findField('extractionTaskSoapAction').getValue();
+                formData.extraction_tag = form.findField('extractionTaskExtractionTag').getValue();
+                formData.request_payload = form.findField('extractionTaskRequestMessage').getValue();
+            }
+            if (form.findField('extractionTaskType').getValue() === 'SQL') {
+                formData.query = form.findField('extractionTaskQuery').getValue();
+                formData.validation_expression = form.findField('extractionTaskValidationExpression').getValue();
+                formData.db_alias = form.findField('extractionTaskDatabase').getValue();
+            }
+            if (form.findField('extractionTaskType').getValue() === 'SPL') {
+                formData.query = form.findField('extractionTaskQuery').getValue();
+                formData.validation_expression = form.findField('extractionTaskValidationExpression').getValue();
+                formData.STORE_MSG_FLAG = form.findField('extractionTaskfieldstoreMessage').getValue();
+            }
+            if (form.findField('extractionTaskType').getValue() === 'MANUAL') {
+                formData.query = form.findField('extractionTaskQuery').getValue();
+                formData.validation_expression = form.findField('extractionTaskValidationExpression').getValue();
+                formData.db_alias = form.findField('extractionTaskDatabase').getValue();
+            }
+            extractionTaskformData.push(formData);
+        }
+        var AllTransForms = view.query('transformTaskform');
+        var transformTaskformData = [];
+        for (var i = 0; i < AllTransForms.length; i++) {
+            var form = AllTransForms[i].getForm();
+            var formData = {};
+            formData.name = form.findField('transformTaskName').getValue();
+            formData.type = form.findField('transformTaskType').getValue();
+            formData.tag_name = form.findField('transformTaskTagName').getValue();
+            formData.validation_expression = form.findField('transformTaskValidationExpression').getValue();
+            formData.extracted_value_name = form.findField('transformTaskExtractedValueName').getValue();
+            if (formData.name.trim() === '' || formData.tag_name.trim() === '' || formData.extracted_value_name.trim() === '') {
+                transformTaskformDataError.push(transformTaskformData[i])
+            }
+            transformTaskformData.push(formData);
+        }
+        var allRequestMessageform = view.query('requestMessageform');
+        var requestMessageformsData = [];
+        for (i = 0; i < allRequestMessageform.length; i++) {
+            var form = allRequestMessageform[i].getForm(), formData = {};
+            formData.endpoint_alias = form.findField('reqMsgEndpoint').getValue();
+            formData.request_payload = form.findField('reqMsgService').getValue();
+            formData.t_request_payload = form.findField('reqMsgExtractedValueName').getValue();
+            requestMessageformsData.push(formData);
+        }
+        //get name and description
+        var orderFallOut = {};
+        orderFallOut.name = view.down('#orderFallName').getValue();
+        if (orderFallOut.name === '')
+            error = 1;
+        orderFallOut.description = view.down('#orderFallDescription').getValue();
+
+        var submitFormData = {
+            orderFallMain: orderFallOut,
+            extractionTask: extractionTaskformData,
+            transformTask: transformTaskformData,
+            requestMessage: requestMessageformsData
+        }
+        debugger;
+        if (transformTaskformDataError.length === 0 && error === 0) {
+            view.setLoading(true);
+            Ext.Ajax.request({
+                url: 'http://localhost:3000/orderfallout/task',
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                jsonData: {
+                    postData: Ext.util.JSON.encode(submitFormData)
+                },
+                success: function (response, opts) {
+                    //var obj = Ext.decode(response.responseText);
+                    view.setLoading(false);
+                },
+
+                failure: function (response, opts) {
+                    console.log('server-side failure with status code ' + response.status);
+                    view.setLoading(false);
+                }
+            });
+        } else {
+            Ext.Msg.alert('Warning!', 'Please check and try again!');
+        }
+
     }
 
 
@@ -211,15 +311,15 @@ Ext.define('OrderFalloutTool.view.form.cognitoforms', {
     xtype: 'cognitoforms',
     refernce: 'cognitoformsPanel',
     requires: [
-    'Ext.plugin.Viewport',
-    'Ext.window.MessageBox'
-    ],    
+        'Ext.plugin.Viewport',
+        'Ext.window.MessageBox'
+    ],
     controller: 'form-cognitoforms',
     viewModel: {
         type: 'form-cognitoforms'
     },
     defaults: {
-        margin: '5 5 5 100'
+        margin: '5 5 5 5'
     },
     items: [{
         xtype: 'container',
@@ -252,19 +352,20 @@ Ext.define('OrderFalloutTool.view.form.cognitoforms', {
                 margin: '0 15 10 0'
             },
             items: [
-            {
-                xtype: 'textfield',
-                itemId: 'orderFallName',
-                fieldLabel: 'Name',
-                allowBlank: false,
-                width: 390
-            }, {
-                xtype: 'textarea',
-                itemId: 'orderFallDescription',
-                fieldLabel: 'Description',
-                allowBlank: false,
-                width: 390
-            }
+                {
+                    xtype: 'textfield',
+                    itemId: 'orderFallName',
+                    fieldLabel: 'Name',
+                    allowBlank: false,
+                    width: 390,
+                    border: 1
+                }, {
+                    xtype: 'textarea',
+                    itemId: 'orderFallDescription',
+                    fieldLabel: 'Description',
+                    allowBlank: false,
+                    width: 390
+                }
             ]
         },
         {
@@ -291,12 +392,12 @@ Ext.define('OrderFalloutTool.view.form.cognitoforms', {
             xtype: 'extractionTaskform'
         }]
     }, {
-            xtype: 'button',
-            text: '+Add Rule',
-            handler: 'AddMoreRule',
-            itemId: 'AddMoreRuleExtractionTaskButton',
-            width: 100
-        
+        xtype: 'button',
+        text: '+Add Rule',
+        handler: 'AddMoreRule',
+        itemId: 'AddMoreRuleExtractionTaskButton',
+        width: 100
+
     }, {
         xtype: 'container',
         items: [{
@@ -358,8 +459,17 @@ Ext.define('OrderFalloutTool.view.form.cognitoforms', {
         text: '+Add Message',
         handler: 'AddMoreMessageRule',
         itemId: 'addMoreMessageRuleButton'
+    }, {
+        xtype: 'container',
+        items: [{
+            xtype: 'button',
+            cls: 'btn',
+            text: 'Submit',
+            margin: '20 0 0 0',
+            handler: 'formSubmit',
+            itemId: 'formButton'
+        }]
     }]
-
 });
 
 
@@ -369,8 +479,8 @@ Ext.define('OrderFalloutTool.view.form.extractionTaskform', {
     bodyPadding: 5,
     width: 820,
     title: 'Rule 1',
-    closable: true,    ruleNum: 1,
-    
+    closable: true, ruleNum: 1,
+
     reference: 'extractionTaskform1',
     listeners: {
         close: 'changeextractionTaskformTitle'
@@ -379,6 +489,7 @@ Ext.define('OrderFalloutTool.view.form.extractionTaskform', {
         xtype: 'container',
         layout: 'hbox',
         defaultType: 'textfield',
+        margin: '0 0 0 10',
         defaults: {
             labelAlign: 'top',
             margin: '0 15 0 0'
@@ -399,10 +510,10 @@ Ext.define('OrderFalloutTool.view.form.extractionTaskform', {
             width: 390,
             store: {
                 data: [
-                { "Value": "API", "name": "API" },
-                { "Value": "SQL", "name": "SQL" },
-                { "Value": "SPL", "name": "SPL" },
-                { "Value": "MANUAL", "name": "MANUAL" }
+                    { "Value": "API", "name": "API" },
+                    { "Value": "SQL", "name": "SQL" },
+                    { "Value": "SPL", "name": "SPL" },
+                    { "Value": "MANUAL", "name": "MANUAL" }
                 ]
             },
             listeners: {
@@ -413,6 +524,7 @@ Ext.define('OrderFalloutTool.view.form.extractionTaskform', {
         xtype: 'container',
         layout: 'hbox',
         defaultType: 'textfield',
+        margin: '0 0 0 10',
         defaults: {
             labelAlign: 'top',
             margin: '10 15 0 0'
@@ -432,6 +544,7 @@ Ext.define('OrderFalloutTool.view.form.extractionTaskform', {
         xtype: 'container',
         layout: 'hbox',
         defaultType: 'textareafield',
+        margin: '0 0 0 10',
         defaults: {
             labelAlign: 'top',
             margin: '10 15 0 0',
@@ -449,6 +562,7 @@ Ext.define('OrderFalloutTool.view.form.extractionTaskform', {
         ]
     }, {
         xtype: 'container',
+        margin: '0 0 0 10',
         layout: 'vbox',
         defaultType: 'textareafield',
         defaults: {
@@ -467,10 +581,10 @@ Ext.define('OrderFalloutTool.view.form.extractionTaskform', {
             width: 390,
             store: {
                 data: [
-                { "Value": "OM", "name": "OM" },
-                { "Value": "BSCS", "name": "BSCS" },
-                { "Value": "AUXDB", "name": "AUXDB" },
-                { "Value": "REPDB", "name": "REPDB" }
+                    { "Value": "OM", "name": "OM" },
+                    { "Value": "BSCS", "name": "BSCS" },
+                    { "Value": "AUXDB", "name": "AUXDB" },
+                    { "Value": "REPDB", "name": "REPDB" }
                 ]
             }
 
@@ -489,6 +603,7 @@ Ext.define('OrderFalloutTool.view.form.extractionTaskform', {
         xtype: 'container',
         layout: 'vbox',
         defaultType: 'radiofield',
+        margin: '0 0 0 10',
         defaults: {
             labelAlign: 'top',
             margin: '10 15 0 0'
@@ -501,8 +616,8 @@ Ext.define('OrderFalloutTool.view.form.extractionTaskform', {
             hidden: true,
             vertical: true,
             items: [
-            { boxLabel: 'Yes', name: 'rb', inputValue: '1' },
-            { boxLabel: 'No', name: 'rb', inputValue: '2', checked: true },
+                { boxLabel: 'Yes', name: 'rb', inputValue: '1' },
+                { boxLabel: 'No', name: 'rb', inputValue: '2', checked: true },
 
             ],
             listeners: {
@@ -545,6 +660,7 @@ Ext.define('OrderFalloutTool.view.form.extractionTaskform', {
     },
     {
         xtype: 'container',
+        margin: '0 0 0 10',
         layout: 'vbox',
         defaultType: 'textfield',
         defaults: {
@@ -576,6 +692,7 @@ Ext.define('OrderFalloutTool.view.form.extractionTaskform', {
         fieldLabel: 'Value',
         name: 'extractionTaskValue',
         labelAlign: 'top',
+        margin: '0 0 0 10',
         xtype: 'textfield',
         hidden: true,
         width: 390
@@ -607,24 +724,35 @@ Ext.define('OrderFalloutTool.view.form.RequestMessageform', {
             margin: '0 15 0 0'
         },
         items: [
-        {
-            fieldLabel: 'Endpoint',
-            xtype: 'combo',
-            displayField: 'Value',
-            valueField: 'name',
-            queryMode: 'local',
-            width: 390,
-            store: {
-                data: [
-                { "Value": "WSIL", "name": "WSIL" },
-                { "Value": "OM", "name": "OM" }
-                ]
-            }
-        }, {
-            fieldLabel: 'Soap Action',
-            allowBlank: false,
-            width: 390,
-        }],
+            {
+                fieldLabel: 'Endpoint',
+                xtype: 'combo',
+                displayField: 'Value',
+                name: 'reqMsgEndpoint',
+                valueField: 'name',
+                queryMode: 'local',
+                width: 390,
+                store: {
+                    data: [
+                        { "Value": "WSIL", "name": "WSIL" },
+                        { "Value": "OM", "name": "OM" }
+                    ]
+                }
+            }, {
+                fieldLabel: 'Service',
+                xtype: 'combo',
+                displayField: 'Value',
+                valueField: 'name',
+                name: 'reqMsgService',
+                queryMode: 'local',
+                width: 390,
+                store: {
+                    data: [
+                        { "Value": "First Choice", "name": "First Choice" },
+                        { "Value": "Second Choice", "name": "Second Choice" }
+                    ]
+                }
+            }],
 
 
     }, {
@@ -650,6 +778,7 @@ Ext.define('OrderFalloutTool.view.form.RequestMessageform', {
         },
         items: [{
             fieldLabel: 'Extracted Value Name',
+            name: 'reqMsgExtractedValueName',
             xtype: 'textareafield',
             width: 800,
             grow: true
@@ -667,6 +796,7 @@ Ext.define('OrderFalloutTool.view.form.RequestMessageform', {
         {
             fieldLabel: 'Order Priority',
             allowBlank: false,
+            name: 'reqMsgOrderPriority',
             width: 390,
         },
         {
@@ -708,19 +838,21 @@ Ext.define('OrderFalloutTool.view.form.transformTaskform', {
         },
         items: [{
             fieldLabel: 'Name',
+            name: 'transformTaskName',
             allowBlank: false,
             width: 390,
         },
         {
             fieldLabel: 'Type',
             xtype: 'combo',
+            name: 'transformTaskType',
             displayField: 'Value',
             valueField: 'name',
             queryMode: 'local',
             width: 390,
             store: {
                 data: [
-                { "Value": "XML", "name": "XML" }
+                    { "Value": "XML", "name": "XML" }
                 ]
             }
         }]
@@ -737,9 +869,11 @@ Ext.define('OrderFalloutTool.view.form.transformTaskform', {
         items: [{
             fieldLabel: 'Tag Name',
             allowBlank: false,
+            name: 'transformTaskTagName',
             width: 390,
         }, {
             fieldLabel: 'Validation Expression',
+            name: 'transformTaskValidationExpression',
             allowBlank: false,
             width: 390,
         }
@@ -758,6 +892,7 @@ Ext.define('OrderFalloutTool.view.form.transformTaskform', {
         },
         items: [{
             fieldLabel: 'Extracted Value Name',
+            name: 'transformTaskExtractedValueName',
             xtype: 'textareafield',
             width: 440,
             grow: true
