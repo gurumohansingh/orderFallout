@@ -265,9 +265,9 @@ Ext.define('OrderFalloutTool.view.form.cognitoformsController', {
         var requestMessageformsData = [];
         for (i = 0; i < allRequestMessageform.length; i++) {
             var form = allRequestMessageform[i].getForm(), formData = {};
-            formData.endpoint_alias = form.findField('reqMsgEndpoint').getValue();
-            formData.request_payload = form.findField('reqMsgService').getValue();
-            formData.t_request_payload = form.findField('reqMsgExtractedValueName').getValue();
+            formData.ENDPOINT_NAME = form.findField('reqMsgEndpoint').getValue();
+            formData.ENDPOINT_SERVICE = form.findField('reqMsgService').getValue();
+            formData.REQUEST_PAYLOAD = form.findField('reqMsgExtractedValueName').getValue();
             requestMessageformsData.push(formData);
         }
         //get name and description
@@ -677,6 +677,7 @@ Ext.define('OrderFalloutTool.view.form.extractionTaskform', {
             fieldLabel: 'Request Message',
             name: 'extractionTaskRequestMessage',
             xtype: 'textareafield',
+            height:150,
             width: 390,
             grow: true
         },
@@ -740,7 +741,8 @@ Ext.define('OrderFalloutTool.view.form.RequestMessageform', {
                 store: {
                     data: [
                         { "Value": "WSIL", "name": "WSIL" },
-                        { "Value": "OM", "name": "OM" }
+                        { "Value": "OM", "name": "OM" },
+                        { "Value": "BSCS", "name": "BSCS" }
                     ]
                 }
             }, {
@@ -782,15 +784,16 @@ Ext.define('OrderFalloutTool.view.form.RequestMessageform', {
 
         },
         items: [{
-            fieldLabel: 'Extracted Value Name',
+            fieldLabel: 'Request Message',
             name: 'reqMsgExtractedValueName',
             xtype: 'textareafield',
+            height:150,
             width: 800,
             grow: true
         },
         {
             xtype: 'label',
-            html: 'Provide the name of the extracted data field that will replace the original <br>data in the request.',
+            html: 'This is the request payload that will require transform rules performed.',
             margin: '0 0 0 10',
             style: {
                 'font-style': 'italic',
@@ -900,6 +903,7 @@ Ext.define('OrderFalloutTool.view.form.transformTaskform', {
             name: 'transformTaskExtractedValueName',
             xtype: 'textareafield',
             width: 440,
+            height:150,
             grow: true
         },
         {
