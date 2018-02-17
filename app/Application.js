@@ -3,6 +3,13 @@
 * calls Ext.application(). This is the ideal place to handle application launch and
 * initialization details.
 */
+var servicesUrl = {
+    AddNew: 'http://localhost:3000/orderfallout/task',
+    Delete: 'http://localhost:3000/orderfallout/task/',
+    GetMappingService: 'http://localhost:3000/orderfallout/services/',
+    Edit: 'http://localhost:3000/orderfallout/task/',
+    getAllFalloutName: 'http://localhost:3000/orderfallout/task'
+}
 Ext.define('OrderFalloutTool.Application', {
     extend: 'Ext.app.Application',
 
@@ -71,7 +78,8 @@ Ext.define('OrderFalloutTool.view.form.cognitoformsController', {
     alias: 'controller.form-cognitoforms',
     init: function () {
         var me = this;
-        me.ruleNum = 1, me.taskRule = 1, me.messages = 1, me.allowTotalCount = 5;
+        me.ruleNum = 1, me.taskRule = 1, me.messages = 1, me.allowTotalCount = 5, editFlag = false;
+        me.loadOrderFallForEdit();
 
     },
     AddMoreRule: function (button, e) {
@@ -85,7 +93,7 @@ Ext.define('OrderFalloutTool.view.form.cognitoformsController', {
         });
 
         me.getView().getComponent('extractionTaskformContainer').add(me.ruleNum, newForm)
-        if (totalForm === me.allowTotalCount) {
+        if (totalForm === me.allowTotalCount && button !== null) {
             button.setDisabled(true);
         }
     },
@@ -99,7 +107,7 @@ Ext.define('OrderFalloutTool.view.form.cognitoformsController', {
             ruleNum: me.taskRule
         });
         me.getView().getComponent('transformTaskformContainer').add(me.taskRule, newForm);
-        if (totalForm === me.allowTotalCount) {
+        if (totalForm === me.allowTotalCount && button !== null) {
             button.setDisabled(true);
         }
     },
@@ -113,7 +121,7 @@ Ext.define('OrderFalloutTool.view.form.cognitoformsController', {
             ruleNum: me.messages
         });
         me.getView().getComponent('requestMessageformContainer').add(me.messages, newForm);
-        if (totalForm === me.allowTotalCount) {
+        if (totalForm === me.allowTotalCount && button !== null) {
             button.setDisabled(true);
         }
     },
@@ -127,7 +135,6 @@ Ext.define('OrderFalloutTool.view.form.cognitoformsController', {
         if (newValue === 'SQL') {
             me.hideFields(form, apiFields.concat(splFields).concat(manualFields));
             me.showFields(form, SqlFields);
-
         }
         if (newValue === 'API') {
             me.hideFields(form, SqlFields.concat(splFields).concat(manualFields));
@@ -208,6 +215,8 @@ Ext.define('OrderFalloutTool.view.form.cognitoformsController', {
         var me = this;
         var view = me.getView();
         var error = 0;
+        debugger;
+        var addEdit = view.down('#radioAddEdit').getValue().AddEdit;
         var extractionTaskformData = [];
         var extractionTaskforms = view.query('extractionTaskform');
         var transformTaskformDataError = [];
@@ -231,12 +240,11 @@ Ext.define('OrderFalloutTool.view.form.cognitoformsController', {
             if (form.findField('extractionTaskType').getValue() === 'SPL') {
                 formData.query = form.findField('extractionTaskQuery').getValue();
                 formData.validation_expression = form.findField('extractionTaskValidationExpression').getValue();
-                if(form.findField('extractionTaskfieldstoreMessage').getValue().rb=="1"){
-                formData.STORE_MSG_FLAG= 1;
+                if (form.findField('extractionTaskfieldstoreMessage').getValue().rb == "1") {
+                    formData.STORE_MSG_FLAG = 1;
                 }
-                else
-                {
-                    formData.STORE_MSG_FLAG= 0;
+                else {
+                    formData.STORE_MSG_FLAG = 0;
                 }
             }
             if (form.findField('extractionTaskType').getValue() === 'MANUAL') {
@@ -273,20 +281,23 @@ Ext.define('OrderFalloutTool.view.form.cognitoformsController', {
         //get name and description
         var orderFallOut = {};
         orderFallOut.name = view.down('#orderFallName').getValue();
+        orderFallOut.description = view.down('#orderFallDescription').getValue();
         if (orderFallOut.name === '')
             error = 1;
-        orderFallOut.description = view.down('#orderFallDescription').getValue();
-
+        editId = view.down('#editTask').getValue();
         var submitFormData = {
             orderFallMain: orderFallOut,
             extractionTask: extractionTaskformData,
             transformTask: transformTaskformData,
-            requestMessage: requestMessageformsData
+            requestMessage: requestMessageformsData,
+            addEditFlag: addEdit,
+            editId: editId
         }
+
         if (transformTaskformDataError.length === 0 && error === 0) {
             view.setLoading(true);
             Ext.Ajax.request({
-                url: 'http://localhost:3000/orderfallout/task',
+                url: servicesUrl.AddNew,
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 jsonData: {
@@ -295,20 +306,175 @@ Ext.define('OrderFalloutTool.view.form.cognitoformsController', {
                 success: function (response, opts) {
                     //var obj = Ext.decode(response.responseText);
                     view.setLoading(false);
+                    me.loadOrderFallForEdit();
+
                 },
 
                 failure: function (response, opts) {
-                    console.log('server-side failure with status code ' + response.status);
                     view.setLoading(false);
+                    //var obj = Ext.decode(response);
+                    //me.showHideResponse(showhideCmp);
                 }
             });
         } else {
             Ext.Msg.alert('Warning!', 'Please check and try again!');
         }
+    },
+    LoadService: function (combo, newValue, oldValue, eOpts) {
+        var form = combo.up('requestMessageform').getForm();
 
+        var getSeriviceStore = form.findField('reqMsgService').getStore();
+        Ext.Ajax.request({
+            url: servicesUrl.GetMappingService + newValue,
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+            success: function (response, opts) {
+                var obj = Ext.decode(response.responseText);
+                getSeriviceStore.loadData(obj.response)
+            },
+            failure: function (response, opts) {
+                console.log('server-side failure with status code ' + response.status);
+            }
+        });
+    },
+    loadOrderFallForEdit: function () {
+        var me = this;
+        var view = me.getView();
+        var OrderFallStore = view.down('#editTask').getStore();
+        Ext.Ajax.request({
+            url: servicesUrl.getAllFalloutName,
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+            success: function (response, opts) {
+                var obj = Ext.decode(response.responseText);
+                OrderFallStore.loadData(obj.response)
+            },
+            failure: function (response, opts) {
+                console.log('server-side failure with status code ' + response.status);
+            }
+        });
+    },
+    loadDataToEdit: function (combo, newVal, oldVal, e) {
+        var me = this;
+        Ext.Ajax.request({
+            url: servicesUrl.Edit + newVal,
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+            success: function (response, opts) {
+                var obj = Ext.decode(response.responseText);
+                me.loadEditForm(obj.response);
+
+            },
+            failure: function (response, opts) {
+                console.log('server-side failure with status code ' + response.status);
+            }
+        });
+    },
+    showHideResponse: function (cmp) {
+        cmp.html = '<span style="color: rgb(255, 0, 0); padding-left: 2px;">Data Added Successfully.</span>';
+        cmp.setHidden(false);
+        Ext.defer(function () {
+            cmp.setHidden(true);
+        }, 5000);
+    },
+    removeFormsForEdit: function (form) {
+        for (var i = 1; i < form.length; i++) {
+            form[i].destroy();
+        }
+    },
+    loadEditForm: function (data) {
+        var me = this;
+        var view = me.getView();
+        var extractionTaskformsData = data.extractionTask;
+        view.down('#orderFallName').setValue(data.orderFallMain[0].NAME);
+        view.down('#orderFallDescription').setValue(data.orderFallMain[0].DESCRIPTION);
+        //destroy existing forms
+        me.removeFormsForEdit(view.query('extractionTaskform'));
+        me.removeFormsForEdit(view.query('transformTaskform'));
+        me.removeFormsForEdit(view.query('requestMessageform'));
+        view.down('#radioAddEdit').setValue({ AddEdit: 'Edit' });
+        for (var i = 0; i < extractionTaskformsData.length; i++) {
+            var extractionTaskforms = view.query('extractionTaskform');
+            var form = extractionTaskforms[i].getForm();
+            var formData = extractionTaskformsData[i];
+            form.findField('extractionTaskName').setValue(formData.NAME);
+            var type = formData.TYPE;
+            form.findField('extractionTaskType').setValue(type);
+            if (type === 'API') {
+                form.findField('extractionTaskSoapAction').setValue(formData.EXTRACTION_TAG);
+                form.findField('extractionTaskExtractionTag').setValue(formData.EXTRACTION_TAG);
+                form.findField('extractionTaskRequestMessage').setValue(formData.REQUEST_PAYLOAD);
+            }
+            if (type === 'SQL') {
+                form.findField('extractionTaskQuery').setValue(formData.QUERY);
+                form.findField('extractionTaskValidationExpression').setValue(formData.VALIDATION_EXPRESSION);
+                form.findField('extractionTaskDatabase').setValue(formData.DB_ALIAS);
+            }
+            if (type === 'SPL') {
+                form.findField('extractionTaskQuery').setValue(formData.QUERY);
+                form.findField('extractionTaskValidationExpression').setValue(formData.VALIDATION_EXPRESSION);
+                form.findField('extractionTaskfieldstoreMessage').setValue({ rb: formData.STORE_MSG_FLAG });
+            }
+
+            if (type === 'MANUAL') {
+                form.findField('extractionTaskQuery').setValue(formData.EXTRACTIONTASKQUERY);
+                form.findField('extractionTaskValidationExpression').setValue(formData.EXTRACTIONTASKVALIDATIONEXPRESSION);
+                form.findField('extractionTaskDatabase').setValue(formData.EXTRACTIONTASKDATABASE);
+            }
+            if (extractionTaskformsData.length - 1 > i)
+                me.AddMoreRule(null, null);
+        }
+
+        for (var i = 0; i < data.transformTask.length; i++) {
+            var AllTransForms = view.query('transformTaskform');
+            var form = AllTransForms[i].getForm();
+            var formData = data.transformTask[i]
+            form.findField('transformTaskName').setValue(formData.NAME);
+            form.findField('transformTaskType').setValue(formData.TYPE);
+            form.findField('transformTaskTagName').setValue(formData.TAG_NAME);
+            form.findField('transformTaskValidationExpression').setValue(formData.VALIDATION_EXPRESSION);
+            formData.extracted_value_name = form.findField('transformTaskExtractedValueName').setValue(formData.EXTRACTED_VALUE_NAME);
+            if (data.transformTask.length - 1 > i)
+                me.AddMoreTaskRule(null);
+        }
+
+        for (i = 0; i < data.requestMessage.length; i++) {
+            var allRequestMessageform = view.query('requestMessageform');
+            var form = allRequestMessageform[i].getForm();
+            var formData = data.requestMessage[i];
+            form.findField('reqMsgEndpoint').setValue(formData.ENDPOINT_NAME);
+            form.findField('reqMsgService').setValue(formData.ENDPOINT_SERVICE);
+            form.findField('reqMsgExtractedValueName').setValue(formData.REQUEST_PAYLOAD);
+            if (data.requestMessage.length - 1 > i)
+                me.AddMoreMessageRule(null);
+
+        }
+    },
+    formDelete: function (combo, newVal, oldVal, e) {
+        var me = this;
+        var view = me.getView();
+        var id = view.down('#editTask').getValue();
+        Ext.Msg.show({
+            title: 'Delete',
+            message: 'You are Deleting Order Fall Data. Would you like to Delete?',
+            buttons: Ext.Msg.YESNOCANCEL,
+            fn: function (btn) {
+                if (btn === 'yes') {
+                    Ext.Ajax.request({
+                        url: servicesUrl.Delete+id,
+                        method: 'DELETE',
+                        headers: { 'Content-Type': 'application/json' },
+                        success: function (response, opts) {
+                            window.location.href=window.location.href;
+                        },
+                        failure: function (response, opts) {
+                            console.log('server-side failure with status code ' + response.status);
+                        }
+                    });
+                }
+            }
+        });
     }
-
-
 });
 
 Ext.define('OrderFalloutTool.view.form.cognitoforms', {
@@ -353,6 +519,41 @@ Ext.define('OrderFalloutTool.view.form.cognitoforms', {
             xtype: 'container',
             layout: 'hbox',
             defaults: {
+                width: 280,
+                labelWidth: 120
+            },
+            items: [
+                {
+                    xtype: 'combo',
+                    fieldLabel: 'Select Task For Edit',
+                    forceSelection: true,
+                    editable: false,
+                    valueField: 'OF_TASK_ID',
+                    displayField: 'NAME',
+                    itemId: 'editTask',
+                    queryMode: 'local',
+                    listeners: {
+                        change: 'loadDataToEdit'
+                    },
+                    store: {
+
+                    }
+                }, {
+                    xtype: 'radiogroup',
+                    fieldLabel: 'Select Action',
+                    itemId: 'radioAddEdit',
+                    labelWidth: 80,
+                    items: [
+                        { boxLabel: 'Add New', name: 'AddEdit', inputValue: 'AddNew', checked: true },
+                        { boxLabel: 'Edit', name: 'AddEdit', inputValue: 'Edit' }
+                    ]
+                }
+            ]
+        },
+        {
+            xtype: 'container',
+            layout: 'hbox',
+            defaults: {
                 labelAlign: 'top',
                 margin: '0 15 10 0'
             },
@@ -363,13 +564,15 @@ Ext.define('OrderFalloutTool.view.form.cognitoforms', {
                     fieldLabel: 'Name',
                     allowBlank: false,
                     width: 390,
-                    border: 1
+                    border: 1,
+                    labelSeparator: '<span style="color: rgb(255, 0, 0); padding-left: 2px;">*</span>'
                 }, {
                     xtype: 'textarea',
                     itemId: 'orderFallDescription',
                     fieldLabel: 'Description',
                     allowBlank: false,
-                    width: 390
+                    width: 390,
+                    labelSeparator: '<span style="color: rgb(255, 0, 0); padding-left: 2px;">*</span>'
                 }
             ]
         },
@@ -465,6 +668,11 @@ Ext.define('OrderFalloutTool.view.form.cognitoforms', {
         handler: 'AddMoreMessageRule',
         itemId: 'addMoreMessageRuleButton'
     }, {
+        xtype: 'label',
+        html: 'Success',
+        hidden: true,
+        itemId: 'showSuccessError'
+    }, {
         xtype: 'container',
         items: [{
             xtype: 'button',
@@ -473,6 +681,13 @@ Ext.define('OrderFalloutTool.view.form.cognitoforms', {
             margin: '20 0 0 0',
             handler: 'formSubmit',
             itemId: 'formButton'
+        }, {
+            xtype: 'button',
+            cls: 'btn',
+            text: 'Delete',
+            margin: '20 0 0 20',
+            handler: 'formDelete',
+            itemId: 'formDelete'
         }]
     }]
 });
@@ -503,6 +718,8 @@ Ext.define('OrderFalloutTool.view.form.extractionTaskform', {
             fieldLabel: 'Name',
             name: 'extractionTaskName',
             width: 390,
+            allowBlank: false,
+            labelSeparator: '<span style="color: rgb(255, 0, 0); padding-left: 2px;">*</span>'
         },
         {
             fieldLabel: 'Type',
@@ -513,6 +730,9 @@ Ext.define('OrderFalloutTool.view.form.extractionTaskform', {
             queryMode: 'local',
             value: 'API',
             width: 390,
+            allowBlank: false,
+            forceSelection: true,
+            labelSeparator: '<span style="color: rgb(255, 0, 0); padding-left: 2px;">*</span>',
             store: {
                 data: [
                     { "Value": "API", "name": "API" },
@@ -584,6 +804,7 @@ Ext.define('OrderFalloutTool.view.form.extractionTaskform', {
             valueField: 'Value',
             queryMode: 'local',
             width: 390,
+            forceSelection: true,
             store: {
                 data: [
                     { "Value": "OM", "name": "OM" },
@@ -677,7 +898,7 @@ Ext.define('OrderFalloutTool.view.form.extractionTaskform', {
             fieldLabel: 'Request Message',
             name: 'extractionTaskRequestMessage',
             xtype: 'textareafield',
-            height:150,
+            height: 150,
             width: 390,
             grow: true
         },
@@ -738,25 +959,30 @@ Ext.define('OrderFalloutTool.view.form.RequestMessageform', {
                 valueField: 'name',
                 queryMode: 'local',
                 width: 390,
+                forceSelection: true,
                 store: {
                     data: [
                         { "Value": "WSIL", "name": "WSIL" },
                         { "Value": "OM", "name": "OM" },
                         { "Value": "BSCS", "name": "BSCS" }
                     ]
+                },
+                listeners: {
+                    change: 'LoadService'
                 }
             }, {
                 fieldLabel: 'Service',
                 xtype: 'combo',
-                displayField: 'Value',
-                valueField: 'name',
+                displayField: 'SERVICE_NAME',
+                valueField: 'SERVICE_NAME',
                 name: 'reqMsgService',
                 queryMode: 'local',
+                //forceSelection: true,
                 width: 390,
                 store: {
                     data: [
-                        { "Value": "First Choice", "name": "First Choice" },
-                        { "Value": "Second Choice", "name": "Second Choice" }
+                        { "SERVICE_NAME": "Select" }
+
                     ]
                 }
             }],
@@ -787,7 +1013,7 @@ Ext.define('OrderFalloutTool.view.form.RequestMessageform', {
             fieldLabel: 'Request Message',
             name: 'reqMsgExtractedValueName',
             xtype: 'textareafield',
-            height:150,
+            height: 150,
             width: 800,
             grow: true
         },
@@ -803,9 +1029,8 @@ Ext.define('OrderFalloutTool.view.form.RequestMessageform', {
         },
         {
             fieldLabel: 'Order Priority',
-            allowBlank: false,
             name: 'reqMsgOrderPriority',
-            width: 390,
+            width: 390
         },
         {
             xtype: 'label',
@@ -848,7 +1073,8 @@ Ext.define('OrderFalloutTool.view.form.transformTaskform', {
             fieldLabel: 'Name',
             name: 'transformTaskName',
             allowBlank: false,
-            width: 390,
+            labelSeparator: '<span style="color: rgb(255, 0, 0); padding-left: 2px;">*</span>',
+            width: 390
         },
         {
             fieldLabel: 'Type',
@@ -857,6 +1083,9 @@ Ext.define('OrderFalloutTool.view.form.transformTaskform', {
             displayField: 'Value',
             valueField: 'name',
             queryMode: 'local',
+            allowBlank: false,
+            forceSelection: true,
+            labelSeparator: '<span style="color: rgb(255, 0, 0); padding-left: 2px;">*</span>',
             width: 390,
             store: {
                 data: [
@@ -876,14 +1105,16 @@ Ext.define('OrderFalloutTool.view.form.transformTaskform', {
         },
         items: [{
             fieldLabel: 'Tag Name',
-            allowBlank: false,
             name: 'transformTaskTagName',
             width: 390,
+            allowBlank: false,
+            labelSeparator: '<span style="color: rgb(255, 0, 0); padding-left: 2px;">*</span>'
         }, {
             fieldLabel: 'Validation Expression',
             name: 'transformTaskValidationExpression',
             allowBlank: false,
             width: 390,
+            labelSeparator: '<span style="color: rgb(255, 0, 0); padding-left: 2px;">*</span>'
         }
         ]
     },
@@ -903,8 +1134,10 @@ Ext.define('OrderFalloutTool.view.form.transformTaskform', {
             name: 'transformTaskExtractedValueName',
             xtype: 'textareafield',
             width: 440,
-            height:150,
-            grow: true
+            height: 150,
+            grow: true,
+            allowBlank: false,
+            labelSeparator: '<span style="color: rgb(255, 0, 0); padding-left: 2px;">*</span>'
         },
         {
             xtype: 'label',
