@@ -211,11 +211,11 @@ Ext.define('OrderFalloutTool.view.form.cognitoformsController', {
             me.getView().getComponent('addMoreTaskRuleButton').setDisabled(false);
     },
     //submit button
-    formSubmit: function () {
+    formSubmit: function (button) {
         var me = this;
         var view = me.getView();
         var error = 0;
-        debugger;
+        button.setDisabled(true);
         var addEdit = view.down('#radioAddEdit').getValue().AddEdit;
         var extractionTaskformData = [];
         var extractionTaskforms = view.query('extractionTaskform');
@@ -294,8 +294,7 @@ Ext.define('OrderFalloutTool.view.form.cognitoformsController', {
             editId: editId
         }
 
-        if (transformTaskformDataError.length === 0 && error === 0) {
-            view.setLoading(true);
+        if (transformTaskformDataError.length === 0 && error === 0) {            
             Ext.Ajax.request({
                 url: servicesUrl.AddNew,
                 method: 'POST',
@@ -304,19 +303,29 @@ Ext.define('OrderFalloutTool.view.form.cognitoformsController', {
                     postData: Ext.util.JSON.encode(submitFormData)
                 },
                 success: function (response, opts) {
-                    //var obj = Ext.decode(response.responseText);
-                    view.setLoading(false);
-                    me.loadOrderFallForEdit();
-
+                    button.setDisabled(false);
+                    me.removeFormsForEdit(extractionTaskforms);
+                    me.removeFormsForEdit(AllTransForms);
+                    me.removeFormsForEdit(allRequestMessageform);
+                    view.down('#orderFallName').setValue();
+                    view.down('#orderFallDescription').setValue();
+                    view.down('#radioAddEdit').setValue({AddEdit:'AddNew'})
+                    me.showHideResponse('<span style="color:#RRGGBB; padding-left: 2px;">Data Added Successfully.</span>');
+                    //window.location.href=window.location.href;
                 },
-
                 failure: function (response, opts) {
+                    button.setDisabled(false);
                     view.setLoading(false);
-                    //var obj = Ext.decode(response);
-                    //me.showHideResponse(showhideCmp);
+                    var msg = "Service is down, Please contact to system Administrator.";
+                    if (response.responseText) {
+                        var obj = Ext.decode(response.responseText);
+                        msg = obj.Message.Message;
+                    }
+                    me.showHideResponse('<span style="color:#ff0000; padding-left: 2px;">' + msg + '.</span>');
                 }
             });
         } else {
+            button.setDisabled(false);
             Ext.Msg.alert('Warning!', 'Please check and try again!');
         }
     },
@@ -370,16 +379,18 @@ Ext.define('OrderFalloutTool.view.form.cognitoformsController', {
             }
         });
     },
-    showHideResponse: function (cmp) {
-        cmp.html = '<span style="color: rgb(255, 0, 0); padding-left: 2px;">Data Added Successfully.</span>';
-        cmp.setHidden(false);
-        Ext.defer(function () {
-            cmp.setHidden(true);
-        }, 5000);
+    showHideResponse: function (msg) {
+        var showHideResponsePnl = this.getView().down('#showSuccessError');
+        var showHideResponseCmp = this.getView().down('#showSuccessErrorCmp');
+        showHideResponseCmp.setHtml(msg);
+        showHideResponsePnl.setHidden(false);
     },
     removeFormsForEdit: function (form) {
-        for (var i = 1; i < form.length; i++) {
-            form[i].destroy();
+        for (var i = 0; i < form.length; i++) {
+            if (i === 0)
+                form[i].reset()
+            else
+                form[i].destroy();
         }
     },
     loadEditForm: function (data) {
@@ -451,7 +462,7 @@ Ext.define('OrderFalloutTool.view.form.cognitoformsController', {
         }
     },
     formDelete: function (combo, newVal, oldVal, e) {
-        var me = this;
+        var me = this;        
         var view = me.getView();
         var id = view.down('#editTask').getValue();
         Ext.Msg.show({
@@ -461,11 +472,11 @@ Ext.define('OrderFalloutTool.view.form.cognitoformsController', {
             fn: function (btn) {
                 if (btn === 'yes') {
                     Ext.Ajax.request({
-                        url: servicesUrl.Delete+id,
+                        url: servicesUrl.Delete + id,
                         method: 'DELETE',
                         headers: { 'Content-Type': 'application/json' },
                         success: function (response, opts) {
-                            window.location.href=window.location.href;
+                            window.location.href = window.location.href;
                         },
                         failure: function (response, opts) {
                             console.log('server-side failure with status code ' + response.status);
@@ -668,27 +679,46 @@ Ext.define('OrderFalloutTool.view.form.cognitoforms', {
         handler: 'AddMoreMessageRule',
         itemId: 'addMoreMessageRuleButton'
     }, {
-        xtype: 'label',
-        html: 'Success',
+        xtype: 'panel',
+        width: 800,
+        itemId: 'showSuccessError',
         hidden: true,
-        itemId: 'showSuccessError'
+        style: { borderColor: '#ff0000', borderStyle: 'solid', borderWidth: '1px' },
+        tbar: [
+            {
+                xtype: "tool",
+                type: "close",
+                tooltip: "Close",
+                handler: function () {
+                    this.up("panel").setHidden(true);
+                }
+            }
+        ],
+        items: [{
+            xtype: 'component',
+            html: '',
+            itemId: 'showSuccessErrorCmp'
+        }]
     }, {
         xtype: 'container',
-        items: [{
-            xtype: 'button',
-            cls: 'btn',
-            text: 'Submit',
-            margin: '20 0 0 0',
-            handler: 'formSubmit',
-            itemId: 'formButton'
-        }, {
-            xtype: 'button',
-            cls: 'btn',
-            text: 'Delete',
-            margin: '20 0 0 20',
-            handler: 'formDelete',
-            itemId: 'formDelete'
-        }]
+        items: [
+            {
+                xtype: 'tbfill'
+            }, {
+                xtype: 'button',
+                cls: 'btn',
+                text: 'Submit',
+                margin: '20 0 0 0',
+                handler: 'formSubmit',
+                itemId: 'formButton'
+            }, {
+                xtype: 'button',
+                cls: 'btn',
+                text: 'Delete',
+                margin: '20 0 0 20',
+                handler: 'formDelete',
+                itemId: 'formDelete'
+            }]
     }]
 });
 
