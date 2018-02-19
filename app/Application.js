@@ -264,6 +264,7 @@ Ext.define('OrderFalloutTool.view.form.cognitoformsController', {
             formData.tag_name = form.findField('transformTaskTagName').getValue();
             formData.validation_expression = form.findField('transformTaskValidationExpression').getValue();
             formData.extracted_value_name = form.findField('transformTaskExtractedValueName').getValue();
+            formData.action = form.findField('transformTaskAction').getValue();
             if (formData.name.trim() === '' || formData.tag_name.trim() === '' || formData.extracted_value_name.trim() === '') {
                 transformTaskformDataError.push(transformTaskformData[i])
             }
@@ -294,7 +295,7 @@ Ext.define('OrderFalloutTool.view.form.cognitoformsController', {
             editId: editId
         }
 
-        if (transformTaskformDataError.length === 0 && error === 0) {            
+        if (transformTaskformDataError.length === 0 && error === 0) {
             Ext.Ajax.request({
                 url: servicesUrl.AddNew,
                 method: 'POST',
@@ -307,11 +308,12 @@ Ext.define('OrderFalloutTool.view.form.cognitoformsController', {
                     me.removeFormsForEdit(extractionTaskforms);
                     me.removeFormsForEdit(AllTransForms);
                     me.removeFormsForEdit(allRequestMessageform);
-                    view.down('#orderFallName').setValue();
-                    view.down('#orderFallDescription').setValue();
-                    view.down('#radioAddEdit').setValue({AddEdit:'AddNew'})
+                    view.down('#orderFallName').reset();
+                    view.down('#orderFallDescription').reset();
+                    view.down('#radioAddEdit').setValue({ AddEdit: 'AddNew' })
+                    me.loadOrderFallForEdit();
                     me.showHideResponse('<span style="color:#RRGGBB; padding-left: 2px;">Data Added Successfully.</span>');
-                    //window.location.href=window.location.href;
+
                 },
                 failure: function (response, opts) {
                     button.setDisabled(false);
@@ -444,6 +446,7 @@ Ext.define('OrderFalloutTool.view.form.cognitoformsController', {
             form.findField('transformTaskType').setValue(formData.TYPE);
             form.findField('transformTaskTagName').setValue(formData.TAG_NAME);
             form.findField('transformTaskValidationExpression').setValue(formData.VALIDATION_EXPRESSION);
+            form.findField('transformTaskAction').setValue(formData.ACTION);
             formData.extracted_value_name = form.findField('transformTaskExtractedValueName').setValue(formData.EXTRACTED_VALUE_NAME);
             if (data.transformTask.length - 1 > i)
                 me.AddMoreTaskRule(null);
@@ -462,7 +465,7 @@ Ext.define('OrderFalloutTool.view.form.cognitoformsController', {
         }
     },
     formDelete: function (combo, newVal, oldVal, e) {
-        var me = this;        
+        var me = this;
         var view = me.getView();
         var id = view.down('#editTask').getValue();
         Ext.Msg.show({
@@ -479,7 +482,12 @@ Ext.define('OrderFalloutTool.view.form.cognitoformsController', {
                             window.location.href = window.location.href;
                         },
                         failure: function (response, opts) {
-                            console.log('server-side failure with status code ' + response.status);
+                            var msg = "Service is down, Please contact to system Administrator.";
+                            if (response.responseText) {
+                                var obj = Ext.decode(response.responseText);
+                                msg = obj.Message;
+                            }
+                            me.showHideResponse('<span style="color:#ff0000; padding-left: 2px;">' + msg + '.</span>');
                         }
                     });
                 }
@@ -990,6 +998,8 @@ Ext.define('OrderFalloutTool.view.form.RequestMessageform', {
                 queryMode: 'local',
                 width: 390,
                 forceSelection: true,
+                allowBlank: false,
+                labelSeparator: '<span style="color: rgb(255, 0, 0); padding-left: 2px;">*</span>',
                 store: {
                     data: [
                         { "Value": "WSIL", "name": "WSIL" },
@@ -1007,7 +1017,8 @@ Ext.define('OrderFalloutTool.view.form.RequestMessageform', {
                 valueField: 'SERVICE_NAME',
                 name: 'reqMsgService',
                 queryMode: 'local',
-                //forceSelection: true,
+                allowBlank: false,
+                labelSeparator: '<span style="color: rgb(255, 0, 0); padding-left: 2px;">*</span>',
                 width: 390,
                 store: {
                     data: [
@@ -1045,7 +1056,9 @@ Ext.define('OrderFalloutTool.view.form.RequestMessageform', {
             xtype: 'textareafield',
             height: 150,
             width: 800,
-            grow: true
+            grow: true,
+            allowBlank: false,
+            labelSeparator: '<span style="color: rgb(255, 0, 0); padding-left: 2px;">*</span>'
         },
         {
             xtype: 'label',
@@ -1140,46 +1153,63 @@ Ext.define('OrderFalloutTool.view.form.transformTaskform', {
             allowBlank: false,
             labelSeparator: '<span style="color: rgb(255, 0, 0); padding-left: 2px;">*</span>'
         }, {
-            fieldLabel: 'Validation Expression',
-            name: 'transformTaskValidationExpression',
+            fieldLabel: 'Action',
+            xtype: 'combo',
+            name: 'transformTaskAction',
+            displayField: 'Value',
+            valueField: 'name',
+            queryMode: 'local',
             allowBlank: false,
+            forceSelection: true,
+            value: 'UPDATE',
+            labelSeparator: '<span style="color: rgb(255, 0, 0); padding-left: 2px;">*</span>',
             width: 390,
-            labelSeparator: '<span style="color: rgb(255, 0, 0); padding-left: 2px;">*</span>'
+            store: {
+                data: [
+                    { "Value": "UPDATE", "name": "UPDATE",selected:true },
+                    { "Value": "CREATE", "name": "CREATE" },
+                    { "Value": "DELETE", "name": "DELETE" }
+                ]
+            }
         }
         ]
     },
     {
         xtype: 'container',
-        margin: '50 0 0 0',
-        layout: 'vbox',
+        layout: 'hbox',        
         defaultType: 'textfield',
-        margin: '10 0 10 10',
-        defaults: {
-            labelAlign: 'top',
-            margin: '0 15 0 0'
-
-        },
+        margin: '10 0 10 10',        
         items: [{
-            fieldLabel: 'Extracted Value Name',
-            name: 'transformTaskExtractedValueName',
-            xtype: 'textareafield',
-            width: 440,
-            height: 150,
-            grow: true,
-            allowBlank: false,
-            labelSeparator: '<span style="color: rgb(255, 0, 0); padding-left: 2px;">*</span>'
-        },
-        {
-            xtype: 'label',
-            html: 'Provide the name of the extracted data field that will replace the original <br>data in the request.',
-            margin: '0 0 0 10',
-            style: {
-                'font-style': 'italic',
-                'font-size': '13',
-                'font-family': 'Arial,Helvetica,sans-serif'
-            }
-        }
-        ]
+            xtype: 'container',
+            layout: 'vbox',
+            items: [{
+                fieldLabel: 'Extracted Value Name',
+                name: 'transformTaskExtractedValueName',
+                xtype: 'textfield',
+                labelAlign: 'top',
+                grow: true,
+                width: 390,
+                allowBlank: false,
+                labelSeparator: '<span style="color: rgb(255, 0, 0); padding-left: 2px;">*</span>'
+            },
+            {
+                xtype: 'label',
+                html: 'Provide the name of the extracted data field that will replace the original data in the request.',
+                margin: '0 0 0 10',
+                width: 390,
+                style: {
+                    'font-style': 'italic',
+                    'font-size': '13',
+                    'font-family': 'Arial,Helvetica,sans-serif'
+                }
+            }]
+        }, {
+            xtype:'textfield',
+            labelAlign: 'top',
+            fieldLabel: 'Validation Expression',
+            name: 'transformTaskValidationExpression',
+            width: 390,
+        } ]
     }]
 
 });
