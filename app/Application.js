@@ -68,13 +68,15 @@ Ext.define('OrderFalloutTool.view.main.Main', {
         },
         title: {
             flex: 0,
+            margin:0,
+            padding:0
             
         },
         items: [{
             xtype: 'image',
             src: 'app/logo.png',
-            width: '64px',
-            height: '56px',
+            width: 64,
+            height:66
         }],
     },
     tabBar: {
@@ -82,7 +84,8 @@ Ext.define('OrderFalloutTool.view.main.Main', {
         layout: {
             align: 'stretch',
             overflowHandler: 'none'
-        }
+        },
+        style:"background-color:#002561"
     },
 
     responsiveConfig: {
@@ -97,6 +100,8 @@ Ext.define('OrderFalloutTool.view.main.Main', {
     defaults: {
         bodyPadding: 20,
         scrollable: true,
+        align:'center',
+        textAlign: 'center',
         tabConfig: {
             plugins: 'responsive',
             responsiveConfig: {
