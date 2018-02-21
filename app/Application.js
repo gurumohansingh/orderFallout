@@ -12,7 +12,6 @@ var servicesUrl = {
 }
 Ext.define('OrderFalloutTool.Application', {
     extend: 'Ext.app.Application',
-
     name: 'OrderFalloutTool',
 
     quickTips: false,
@@ -49,27 +48,81 @@ Ext.define('OrderFalloutTool.Application', {
 */
 
 Ext.define('OrderFalloutTool.view.main.Main', {
-    extend: 'Ext.panel.Panel',
+    extend: 'Ext.tab.Panel',
     xtype: 'app-main',
-    bodyPadding: '10 10 10 10',
+
     requires: [
         'Ext.plugin.Viewport',
         'Ext.window.MessageBox'
     ],
-    scrollable: true,
-    height: '80%',
-    border: 2,
-    // style: { borderColor: '#000000', borderStyle: 'solid', borderWidth: '1px' },
-    bodyPadding: '10 10 10 10',
-    layout: {
-        type: 'vbox',
-        align: 'center'
+    ui: 'navigation',
+
+    //tabBarHeaderPosition: 0,
+    //titleRotation: 0,
+    tabRotation: 0,
+    titlePosition: 2,
+    header: {
+        
+        layout: {
+            align: 'stretchmax'
+        },
+        title: {
+            flex: 0,
+            
+        },
+        items: [{
+            xtype: 'image',
+            src: 'app/logo.png',
+            width: '64px',
+            height: '56px',
+        }],
     },
-    margin: '10 0 20 0',
+    tabBar: {
+        flex: 1,
+        layout: {
+            align: 'stretch',
+            overflowHandler: 'none'
+        }
+    },
+
+    responsiveConfig: {
+        tall: {
+            headerPosition: 'top'
+        },
+        wide: {
+            headerPosition: 'left'
+        }
+    },
+
+    defaults: {
+        bodyPadding: 20,
+        scrollable: true,
+        tabConfig: {
+            plugins: 'responsive',
+            responsiveConfig: {
+                wide: {
+                    iconAlign: 'left',
+                    textAlign: 'left'
+                },
+                tall: {
+                    iconAlign: 'top',
+                    textAlign: 'center',
+                    width: 100
+                }
+            }
+        }
+    },
+
     items: [{
+        title: 'Manage',
+        iconCls: 'fa-cog',
+        // The following grid shares a store with the classic version's grid as well!
         items: [{
             xtype: 'cognitoforms'
         }]
+    }, {
+        title: 'View',
+        iconCls: 'fa-th-list'
     }]
 });
 
@@ -248,9 +301,7 @@ Ext.define('OrderFalloutTool.view.form.cognitoformsController', {
                 }
             }
             if (form.findField('extractionTaskType').getValue() === 'MANUAL') {
-                formData.query = form.findField('extractionTaskQuery').getValue();
-                formData.validation_expression = form.findField('extractionTaskValidationExpression').getValue();
-                formData.db_alias = form.findField('extractionTaskDatabase').getValue();
+                formData.query = form.findField('extractionTaskValue').getValue();
             }
             extractionTaskformData.push(formData);
         }
@@ -430,9 +481,7 @@ Ext.define('OrderFalloutTool.view.form.cognitoformsController', {
             }
 
             if (type === 'MANUAL') {
-                form.findField('extractionTaskQuery').setValue(formData.EXTRACTIONTASKQUERY);
-                form.findField('extractionTaskValidationExpression').setValue(formData.EXTRACTIONTASKVALIDATIONEXPRESSION);
-                form.findField('extractionTaskDatabase').setValue(formData.EXTRACTIONTASKDATABASE);
+                form.findField('extractionTaskValue').setValue(formData.QUERY);
             }
             if (extractionTaskformsData.length - 1 > i)
                 me.AddMoreRule(null, null);
@@ -1166,7 +1215,7 @@ Ext.define('OrderFalloutTool.view.form.transformTaskform', {
             width: 390,
             store: {
                 data: [
-                    { "Value": "UPDATE", "name": "UPDATE",selected:true },
+                    { "Value": "UPDATE", "name": "UPDATE", selected: true },
                     { "Value": "CREATE", "name": "CREATE" },
                     { "Value": "DELETE", "name": "DELETE" }
                 ]
@@ -1176,9 +1225,9 @@ Ext.define('OrderFalloutTool.view.form.transformTaskform', {
     },
     {
         xtype: 'container',
-        layout: 'hbox',        
+        layout: 'hbox',
         defaultType: 'textfield',
-        margin: '10 0 10 10',        
+        margin: '10 0 10 10',
         items: [{
             xtype: 'container',
             layout: 'vbox',
@@ -1204,12 +1253,12 @@ Ext.define('OrderFalloutTool.view.form.transformTaskform', {
                 }
             }]
         }, {
-            xtype:'textfield',
+            xtype: 'textfield',
             labelAlign: 'top',
             fieldLabel: 'Validation Expression',
             name: 'transformTaskValidationExpression',
             width: 390,
-        } ]
+        }]
     }]
 
 });
