@@ -61,22 +61,26 @@ Ext.define('OrderFalloutTool.view.main.Main', {
     //titleRotation: 0,
     tabRotation: 0,
     titlePosition: 2,
+    listeners: {
+        tabchange: 'tabChange'
+    },
+    controller: 'tabs',
     header: {
-        
+
         layout: {
             align: 'stretchmax'
         },
         title: {
             flex: 0,
-            margin:0,
-            padding:0
-            
+            margin: 0,
+            padding: 0
+
         },
         items: [{
             xtype: 'image',
             src: 'app/logo.png',
             width: 64,
-            height:66
+            height: 66
         }],
     },
     tabBar: {
@@ -85,7 +89,7 @@ Ext.define('OrderFalloutTool.view.main.Main', {
             align: 'stretch',
             overflowHandler: 'none'
         },
-        style:"background-color:#002561"
+        style: "background-color:#002561"
     },
 
     responsiveConfig: {
@@ -100,7 +104,7 @@ Ext.define('OrderFalloutTool.view.main.Main', {
     defaults: {
         bodyPadding: 20,
         scrollable: true,
-        align:'center',
+        align: 'center',
         textAlign: 'center',
         tabConfig: {
             plugins: 'responsive',
@@ -121,13 +125,17 @@ Ext.define('OrderFalloutTool.view.main.Main', {
     items: [{
         title: 'Manage',
         iconCls: 'fa-cog',
-        // The following grid shares a store with the classic version's grid as well!
+        name: 'manage',
         items: [{
             xtype: 'cognitoforms'
         }]
     }, {
         title: 'View',
-        iconCls: 'fa-th-list'
+        iconCls: 'fa-th-list',
+        name: 'view',
+        items: [{
+            xtype: 'orderFallViewGrid'
+        }]
     }]
 });
 
@@ -135,6 +143,7 @@ Ext.define('OrderFalloutTool.view.form.cognitoformsController', {
     extend: 'Ext.app.ViewController',
     alias: 'controller.form-cognitoforms',
     init: function () {
+
         var me = this;
         me.ruleNum = 1, me.taskRule = 1, me.messages = 1, me.allowTotalCount = 5, editFlag = false;
         me.loadOrderFallForEdit();
@@ -406,6 +415,7 @@ Ext.define('OrderFalloutTool.view.form.cognitoformsController', {
     },
     loadOrderFallForEdit: function () {
         var me = this;
+
         var view = me.getView();
         var OrderFallStore = view.down('#editTask').getStore();
         Ext.Ajax.request({
@@ -547,6 +557,20 @@ Ext.define('OrderFalloutTool.view.form.cognitoformsController', {
                 }
             }
         });
+    },
+    radioAddEditChange: function (radio, newValue, oldValue, eOpts) {
+        var me = this;
+        var view = me.getView();
+        if(newValue.AddEdit==='AddNew'){
+            var extractionTaskforms = view.query('extractionTaskform');
+            var AllTransForms = view.query('transformTaskform');
+            var allRequestMessageform = view.query('requestMessageform');
+            me.removeFormsForEdit(extractionTaskforms);
+            me.removeFormsForEdit(AllTransForms);
+            me.removeFormsForEdit(allRequestMessageform);
+            view.down('#orderFallName').reset();
+            view.down('#orderFallDescription').reset();
+        }
     }
 });
 
@@ -619,7 +643,10 @@ Ext.define('OrderFalloutTool.view.form.cognitoforms', {
                     items: [
                         { boxLabel: 'Add New', name: 'AddEdit', inputValue: 'AddNew', checked: true },
                         { boxLabel: 'Edit', name: 'AddEdit', inputValue: 'Edit' }
-                    ]
+                    ],
+                    listeners: {
+                        change: 'radioAddEditChange'
+                    }
                 }
             ]
         },
@@ -1275,3 +1302,128 @@ Ext.define('OrderFalloutTool.view.form.cognitoformsModel', {
         name: 'ExjsJsDemoApp'
     }
 });
+Ext.define('OrderFalloutTool.store.GridStore', {
+    storeId: 'simpsonsStore',
+    alias: 'store.gridStore',
+    extend: 'Ext.data.Store',
+    proxy: {
+        type: 'ajax',
+        url: servicesUrl.getAllFalloutName,
+        reader: {
+            type: 'json',
+            rootProperty: 'response'
+        }
+    },
+    autoLoad: true
+});
+Ext.define('OrderFalloutTool.view.ViewGrid', {
+    extend: 'Ext.grid.Panel',
+    itemId: 'viewGrid',
+    store: {
+        type: 'gridStore'
+    },
+    autoLoad: true,
+    plugins: [{
+        ptype: 'gridfilters'
+    }],
+    title: 'Order Fall',
+    xtype: 'orderFallViewGrid',
+    controller: 'viewGrid',
+    columns: [{
+        text: 'Name',
+        dataIndex: 'NAME',
+        flex: 1,
+        align: 'left',
+        filter: {
+            type: 'string'
+        }
+    }, {
+
+        text: 'Create On',
+        dataIndex: 'CREATED_ON',
+        flex: 1,
+        align: 'left',
+        filter: {
+            type: 'string'
+        }
+
+    }, {
+        text: 'Last Modified',
+        dataIndex: 'LAST_MODIFIED',
+        flex: 1,
+        align: 'left',
+        filter: {
+            type: 'string'
+        }
+    },
+    {
+        text: 'Description',
+        dataIndex: 'DESCRIPTION',
+        align: 'left',
+        flex: 2
+    },
+
+    {
+        text: 'Action',
+        xtype: 'actioncolumn',
+        flex: 2,
+        items: [{
+            icon: 'app/icon16_error.png',
+            tooltip: 'Delete',
+            margin: 5,
+            handler: 'deleteFromGrid'
+        }]
+
+    }]
+})
+Ext.define('OrderFalloutTool.view.viewGrid', {
+    extend: 'Ext.app.ViewController',
+    alias: 'controller.viewGrid',
+    init: function () {
+
+    },
+    editRecordFromGrid: function (view, rowIndex, colIndex, item, e, record, row) {
+
+        var rec = record.data.OF_TASK_ID;
+
+    },
+    deleteFromGrid: function (view, rowIndex, colIndex, item, e, record, row) {
+        var rec = record.data.OF_TASK_ID;
+        var me = this;
+
+        Ext.Msg.show({
+            title: 'Delete',
+            message: 'You are Deleting Order Fall Data. Would you like to Delete?',
+            buttons: Ext.Msg.YESNOCANCEL,
+            fn: function (btn) {
+                if (btn === 'yes') {
+                    Ext.Ajax.request({
+                        url: servicesUrl.Delete + rec,
+                        method: 'DELETE',
+                        headers: { 'Content-Type': 'application/json' },
+                        success: function (response, opts) {
+
+                            me.getView().getStore().reload();
+                        },
+                        failure: function (response, opts) {
+
+                        }
+                    });
+                }
+            }
+        });
+    }
+});
+Ext.define('OrderFalloutTool.view.tabs', {
+    extend: 'Ext.app.ViewController',
+    alias: 'controller.tabs',
+
+    tabChange: function (tabPanel, newCard, oldCard, eOpts) {
+        if (newCard.name === 'view') {
+            this.getView().down('#viewGrid').getStore().reload()
+        }
+        else {
+            this.getView().down('cognitoforms').getController().loadOrderFallForEdit();
+        }
+    }
+})
