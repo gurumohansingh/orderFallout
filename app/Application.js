@@ -50,7 +50,7 @@ Ext.define('OrderFalloutTool.Application', {
 Ext.define('OrderFalloutTool.view.main.Main', {
     extend: 'Ext.tab.Panel',
     xtype: 'app-main',
-
+    itemId:'topTabPanel',
     requires: [
         'Ext.plugin.Viewport',
         'Ext.window.MessageBox'
@@ -126,6 +126,7 @@ Ext.define('OrderFalloutTool.view.main.Main', {
         title: 'Manage',
         iconCls: 'fa-cog',
         name: 'manage',
+        itemId:'cognitoformsTab',
         items: [{
             xtype: 'cognitoforms'
         }]
@@ -133,6 +134,7 @@ Ext.define('OrderFalloutTool.view.main.Main', {
         title: 'View',
         iconCls: 'fa-th-list',
         name: 'view',
+        itemId:'orderFallViewGridTab',
         items: [{
             xtype: 'orderFallViewGrid'
         }]
@@ -1368,6 +1370,12 @@ Ext.define('OrderFalloutTool.view.ViewGrid', {
         xtype: 'actioncolumn',
         flex: 2,
         items: [{
+            icon: 'app/edit-icon.png',
+            tooltip: 'Edit',
+            margin: '0 10 0 0',
+            padding:'0 5 0 0',
+            handler: 'editFromGrid'
+        },'->',{
             icon: 'app/icon16_error.png',
             tooltip: 'Delete',
             margin: 5,
@@ -1412,6 +1420,13 @@ Ext.define('OrderFalloutTool.view.viewGrid', {
                 }
             }
         });
+    },
+    editFromGrid:function (view, rowIndex, colIndex, item, e, record, row) {
+        var me=this;
+        var view=me.getView();
+        debugger;
+        view.up('#topTabPanel').down('#editTask').setValue(record.data.OF_TASK_ID);
+        view.up('#topTabPanel').setActiveItem(view.up('#topTabPanel').down('#cognitoformsTab'))
     }
 });
 Ext.define('OrderFalloutTool.view.tabs', {
